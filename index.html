@@ -34,7 +34,7 @@
         </a-marker>
 
         <!-- Kamera AR dengan kontrol manual -->
-        <a-entity id="camera" camera wasd-controls look-controls position="0 0 3"></a-entity>
+        <a-entity id="camera" camera look-controls position="0 0 5" zoom-handler></a-entity>
     </a-scene>
 
     <!-- Script untuk Gesture Controls -->
@@ -80,19 +80,6 @@
                         this.startRotation = event.clientX;
                     }
                 });
-                
-                document.addEventListener('wheel', (event) => {
-                    let newScale = this.model.getAttribute('scale');
-                    let scaleFactor = event.deltaY > 0 ? -this.data.scaleFactor : this.data.scaleFactor;
-
-                    newScale.x += scaleFactor;
-                    newScale.y += scaleFactor;
-                    newScale.z += scaleFactor;
-
-                    if (newScale.x > 0.1 && newScale.x < 3) {
-                        this.model.setAttribute('scale', newScale);
-                    }
-                });
             },
 
             initTouchControls: function () {
@@ -111,23 +98,20 @@
                         this.model.object3D.rotation.y += deltaRotation;
                         initialTouchX = event.touches[0].clientX;
                     }
+                });
+            }
+        });
+
+        AFRAME.registerComponent('zoom-handler', {
+            init: function () {
+                this.el.sceneEl.addEventListener('wheel', (event) => {
+                    let camera = this.el.object3D.position;
+                    let zoomFactor = event.deltaY > 0 ? 0.2 : -0.2;
                     
-                    if (event.touches.length === 2) {
-                        let touch1 = event.touches[0];
-                        let touch2 = event.touches[1];
-                        let distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-                        let scaleFactor = distance / 3000;
-                        
-                        let newScale = {
-                            x: initialScale.x + scaleFactor,
-                            y: initialScale.y + scaleFactor,
-                            z: initialScale.z + scaleFactor
-                        };
-                        
-                        if (newScale.x > 0.1 && newScale.x < 3) {
-                            this.model.setAttribute('scale', newScale);
-                        }
-                    }
+                    camera.z += zoomFactor;
+                    
+                    if (camera.z < 1) camera.z = 1;
+                    if (camera.z > 10) camera.z = 10;
                 });
             }
         });
