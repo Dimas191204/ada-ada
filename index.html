@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebAR dengan Model 3D</title>
+    <title>WebAR dengan Model 3D Interaktif</title>
 
     <!-- Load A-Frame dan AR.js -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    
+    <!-- Load Gesture Controls untuk Zoom & Rotasi -->
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@latest/dist/aframe-extras.controls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/ar.js/aframe/build/aframe-ar.min.js"></script>
 
     <style>
         body { margin: 0; overflow: hidden; }
@@ -17,16 +21,60 @@
     <a-scene embedded arjs>
         <!-- Marker AR -->
         <a-marker preset="custom" type="pattern" url="pattern-marker.patt">
-            <!-- Menampilkan model 3D -->
-            <a-entity 
-                gltf-model="model.glb" 
-                position="0 0 0" 
-                scale="0.5 0.5 0.5">
+            <!-- Model 3D dengan kontrol sentuhan -->
+            <a-entity id="model"
+                gltf-model="model.glb"
+                position="0 0 0"
+                scale="0.5 0.5 0.5"
+                gesture-handler>
             </a-entity>
         </a-marker>
 
         <!-- Kamera AR -->
         <a-entity camera></a-entity>
     </a-scene>
+
+    <!-- Script untuk Gesture Controls -->
+    <script>
+        AFRAME.registerComponent('gesture-handler', {
+            schema: {
+                enabled: {default: true},
+                rotationFactor: {default: 5},
+                scaleFactor: {default: 0.1}
+            },
+
+            init: function () {
+                this.model = this.el;
+                this.scale = this.model.getAttribute('scale');
+                this.startScale = Object.assign({}, this.scale);
+                this.startRotation = 0;
+                
+                this.model.addEventListener('mousedown', (event) => {
+                    this.startRotation = event.clientX;
+                });
+
+                document.addEventListener('mousemove', (event) => {
+                    if (event.buttons === 1) { 
+                        let deltaRotation = (event.clientX - this.startRotation) * this.data.rotationFactor;
+                        this.model.object3D.rotation.y += THREE.Math.degToRad(deltaRotation);
+                        this.startRotation = event.clientX;
+                    }
+                });
+
+                document.addEventListener('wheel', (event) => {
+                    let newScale = this.model.getAttribute('scale');
+                    let scaleFactor = event.deltaY > 0 ? -this.data.scaleFactor : this.data.scaleFactor;
+
+                    newScale.x += scaleFactor;
+                    newScale.y += scaleFactor;
+                    newScale.z += scaleFactor;
+
+                    if (newScale.x > 0.1 && newScale.x < 3) {
+                        this.model.setAttribute('scale', newScale);
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
