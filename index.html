@@ -8,30 +8,33 @@
     <!-- Load A-Frame dan AR.js -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
-    
+
     <!-- Load Gesture Controls untuk Zoom & Rotasi -->
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@latest/dist/aframe-extras.controls.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/ar.js/aframe/build/aframe-ar.min.js"></script>
 
     <style>
         body { margin: 0; overflow: hidden; }
     </style>
 </head>
 <body>
+    <!-- Scene AR -->
     <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
+        
         <!-- Marker AR -->
         <a-marker preset="custom" type="pattern" url="pattern-marker.patt" smooth="true">
-            <!-- Model 3D dengan kontrol sentuhan -->
+            
+            <!-- Model 3D -->
             <a-entity id="model"
                 gltf-model="model.glb"
-                position="0 0 -2"  <!-- Jarak model dijauhkan dari kamera -->
-                scale="0.3 0.3 0.3"  <!-- Skala lebih kecil agar tidak ngezoom -->
+                position="0 0 -1"
+                scale="0.2 0.2 0.2"
                 gesture-handler>
             </a-entity>
+        
         </a-marker>
 
-        <!-- Kamera AR -->
-        <a-entity camera></a-entity>
+        <!-- Kamera AR dengan kontrol manual -->
+        <a-entity id="camera" camera wasd-controls look-controls position="0 0 3"></a-entity>
     </a-scene>
 
     <!-- Script untuk Gesture Controls -->
@@ -40,27 +43,44 @@
             schema: {
                 enabled: {default: true},
                 rotationFactor: {default: 5},
-                scaleFactor: {default: 0.1}
+                scaleFactor: {default: 0.02}
             },
 
             init: function () {
                 this.model = this.el;
-                this.scale = this.model.getAttribute('scale');
-                this.startScale = Object.assign({}, this.scale);
+                this.model.object3D.rotation.y = 0;
                 this.startRotation = 0;
+                this.isDragging = false;
+                this.startScale = this.model.getAttribute('scale');
                 
+                // Deteksi perangkat sentuh
+                this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints;
+                
+                if (this.isTouchDevice) {
+                    this.initTouchControls();
+                } else {
+                    this.initMouseControls();
+                }
+            },
+
+            initMouseControls: function () {
                 this.model.addEventListener('mousedown', (event) => {
+                    this.isDragging = true;
                     this.startRotation = event.clientX;
                 });
-
+                
+                document.addEventListener('mouseup', () => {
+                    this.isDragging = false;
+                });
+                
                 document.addEventListener('mousemove', (event) => {
-                    if (event.buttons === 1) { 
-                        let deltaRotation = (event.clientX - this.startRotation) * this.data.rotationFactor;
-                        this.model.object3D.rotation.y += THREE.Math.degToRad(deltaRotation);
+                    if (this.isDragging) {
+                        let deltaRotation = (event.clientX - this.startRotation) * this.data.rotationFactor * 0.01;
+                        this.model.object3D.rotation.y += deltaRotation;
                         this.startRotation = event.clientX;
                     }
                 });
-
+                
                 document.addEventListener('wheel', (event) => {
                     let newScale = this.model.getAttribute('scale');
                     let scaleFactor = event.deltaY > 0 ? -this.data.scaleFactor : this.data.scaleFactor;
@@ -71,6 +91,42 @@
 
                     if (newScale.x > 0.1 && newScale.x < 3) {
                         this.model.setAttribute('scale', newScale);
+                    }
+                });
+            },
+
+            initTouchControls: function () {
+                let initialTouchX = 0;
+                let initialScale = this.startScale;
+                
+                this.model.addEventListener('touchstart', (event) => {
+                    if (event.touches.length === 1) {
+                        initialTouchX = event.touches[0].clientX;
+                    }
+                });
+                
+                this.model.addEventListener('touchmove', (event) => {
+                    if (event.touches.length === 1) {
+                        let deltaRotation = (event.touches[0].clientX - initialTouchX) * this.data.rotationFactor * 0.01;
+                        this.model.object3D.rotation.y += deltaRotation;
+                        initialTouchX = event.touches[0].clientX;
+                    }
+                    
+                    if (event.touches.length === 2) {
+                        let touch1 = event.touches[0];
+                        let touch2 = event.touches[1];
+                        let distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+                        let scaleFactor = distance / 3000;
+                        
+                        let newScale = {
+                            x: initialScale.x + scaleFactor,
+                            y: initialScale.y + scaleFactor,
+                            z: initialScale.z + scaleFactor
+                        };
+                        
+                        if (newScale.x > 0.1 && newScale.x < 3) {
+                            this.model.setAttribute('scale', newScale);
+                        }
                     }
                 });
             }
