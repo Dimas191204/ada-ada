@@ -53,7 +53,6 @@
                 this.isDragging = false;
                 this.startScale = this.model.getAttribute('scale');
                 
-                // Deteksi perangkat sentuh
                 this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints;
                 
                 if (this.isTouchDevice) {
@@ -85,10 +84,16 @@
             initTouchControls: function () {
                 let initialTouchX = 0;
                 let initialScale = this.startScale;
+                let initialDistance = 0;
                 
                 this.model.addEventListener('touchstart', (event) => {
                     if (event.touches.length === 1) {
                         initialTouchX = event.touches[0].clientX;
+                    } else if (event.touches.length === 2) {
+                        initialDistance = Math.hypot(
+                            event.touches[0].clientX - event.touches[1].clientX,
+                            event.touches[0].clientY - event.touches[1].clientY
+                        );
                     }
                 });
                 
@@ -97,6 +102,22 @@
                         let deltaRotation = (event.touches[0].clientX - initialTouchX) * this.data.rotationFactor * 0.01;
                         this.model.object3D.rotation.y += deltaRotation;
                         initialTouchX = event.touches[0].clientX;
+                    } else if (event.touches.length === 2) {
+                        let newDistance = Math.hypot(
+                            event.touches[0].clientX - event.touches[1].clientX,
+                            event.touches[0].clientY - event.touches[1].clientY
+                        );
+                        let scaleFactor = (newDistance - initialDistance) * 0.001;
+                        let newScale = this.model.getAttribute('scale');
+
+                        newScale.x += scaleFactor;
+                        newScale.y += scaleFactor;
+                        newScale.z += scaleFactor;
+
+                        if (newScale.x > 0.1 && newScale.x < 3) {
+                            this.model.setAttribute('scale', newScale);
+                        }
+                        initialDistance = newDistance;
                     }
                 });
             }
